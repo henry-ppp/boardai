@@ -154,6 +154,30 @@ export async function resumeBoardSessionWithEvents(
     return;
   }
 
+  if (action.action === "resume_interrupted" && ctx.meetingPlan) {
+    await runDiscussionFromPlan(
+      ctx.userBrief,
+      ctx.meetingPlan,
+      ctx.turns,
+      ctx.roundCount || 1,
+      sink,
+      options,
+      {
+        includeGlossary: true,
+        includeBriefing: true,
+        scheduleIndex: action.scheduleIndex,
+        userMessages: ctx.userMessages,
+        existingGlossary: ctx.glossary,
+        abortSignal,
+      },
+    );
+    return;
+  }
+
+
+
+
+  
   throw new Error("Invalid resume action or missing session context");
 }
 

@@ -66,12 +66,16 @@ export async function POST(req: Request) {
       ? parseStreamContext(body)
       : undefined;
 
-  if (action !== "start" && !streamContext) {
-    return new Response(JSON.stringify({ error: "Invalid stream context" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+if (
+  !message &&
+  action !== "approve_proposal" &&
+  action !== "resume_interrupted"
+) {
+  return new Response(JSON.stringify({ error: "message is required" }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
   if (streamContext) {
     userBrief = streamContext.userBrief;
@@ -94,16 +98,18 @@ export async function POST(req: Request) {
             req.signal,
           );
         } else {
-          const streamAction: StreamAction =
-            action === "approve_proposal"
-              ? { action: "approve_proposal", invitedRoleIds }
-              : action === "brief_reply"
-                ? { action: "brief_reply", message }
-                : action === "proposal_reply"
-                ? { action: "proposal_reply", message }
-                : action === "interrupt_discussion"
-                  ? { action: "interrupt_discussion", message, scheduleIndex }
-                  : { action: "follow_up", message };
+            const streamAction: StreamAction =
+              action === "approve_proposal"
+                ? { action: "approve_proposal", invitedRoleIds }
+                : action === "brief_reply"
+                  ? { action: "brief_reply", message }
+                  : action === "proposal_reply"
+                    ? { action: "proposal_reply", message }
+                    : action === "interrupt_discussion"
+                      ? { action: "interrupt_discussion", message, scheduleIndex }
+                      : action === "resume_interrupted"
+                        ? { action: "resume_interrupted", scheduleIndex }
+                        : { action: "follow_up", message };
 
           await resumeBoardSessionWithEvents(
             streamAction,

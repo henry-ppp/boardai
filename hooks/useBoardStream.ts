@@ -553,30 +553,87 @@ export function useBoardStream(sessionId: string) {
     [sessionId, consumeStream, bump],
   );
 
-  useEffect(() => {
-    streamStartedRef.current = false;
-    const s = loadSession(sessionId);
-    if (
-      s &&
-      markAutostart(sessionId) &&
-      s.status === "running" &&
-      !s.glossary &&
-      !s.pendingProposal
-    ) {
-      queueMicrotask(() => {
-        void runStream();
-      });
-    }
-  }, [sessionId, runStream]);
 
-  return {
-    state,
-    revision,
-    runStream,
-    approveProposal,
-    sendBriefReply,
-    sendProposalReply,
-    sendFollowUp,
-    interruptDiscussion,
-  };
+
+    const resumeInterruptedSession = useCallback(async () => {
+      const current = loadSession(sessionId);
+    
+      if (!current?.meetingPlan || current.phase !== "discussion") return;
+    
+      const roundId = current.roundCount || 1;
+    
+      const scheduleIndex = current.thread.filter(
+        (t) => t.kind === "expert" && t.roundId === roundId,
+      ).length;
+    
+      patchSession(sessionId, {
+        status: "running",
+        error: null,
+        phase: "discussion",
+      });
+    
+      setStreamingTurn(null);
+      setStreamingChair(null);
+      bump();
+    
+      await consumeStream({
+        action: "resume_interrupted",
+        scheduleIndex,
+        ...buildStreamContext(current),
+      });
+    }, [sessionId, consumeStream, bump]);
+    
+    
+    
+
+  
+    useEffect(() => {
+      streamStartedRef.current = false;
+    
+      const s = loadSession(sessionId);
+      if (!s) return;
+    
+      const shouldAutostart = markAutostart(sessionId);
+    
+      if (
+        shouldAutostart &&
+        s.status === "running" &&
+        !s.glossary &&
+        !s.pendingProposal
+      ) {
+        queueMicrotask(() => {
+          void runStream();
+        });
+        return;
+      }
+    
+      if (
+        !shouldAutostart &&
+        s.status === "running" &&
+        s.phase === "discussion" &&
+        s.meetingPlan &&
+        !s.pendingProposal
+      ) {
+        patchSession(sessionId, {
+          status: "error",
+          error:
+            "Discussion was interrupted. Resume to continue from the last completed expert turn.",
+        });
+    
+        bump();
+      }
+    }, [sessionId, runStream, bump]);
+
+  
+    return {
+      state,
+      revision,
+      runStream,
+      approveProposal,
+      sendBriefReply,
+      sendProposalReply,
+      sendFollowUp,
+      interruptDiscussion,
+      resumeInterruptedSession,
+    };
 }

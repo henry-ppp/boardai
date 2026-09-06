@@ -60,7 +60,8 @@ export type StreamAction =
   | { action: "approve_proposal"; invitedRoleIds: string[] }
   | { action: "proposal_reply"; message: string }
   | { action: "follow_up"; message: string }
-  | { action: "interrupt_discussion"; message: string; scheduleIndex: number };
+  | { action: "interrupt_discussion"; message: string; scheduleIndex: number }
+  | { action: "resume_interrupted"; scheduleIndex: number };
 
 export type StreamContext = {
   userBrief: string;

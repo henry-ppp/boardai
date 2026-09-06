@@ -49,7 +49,9 @@ export function BoardChatView({ sessionId }: Props) {
     sendProposalReply,
     sendFollowUp,
     interruptDiscussion,
+    resumeInterruptedSession,
   } = useBoardStream(sessionId);
+  
   const { setMobileSidebarOpen } = useShell();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -97,8 +99,28 @@ export function BoardChatView({ sessionId }: Props) {
   const pendingProposal = state?.pendingProposal ?? null;
   const streamingTurn = state?.streamingTurn ?? null;
   const streamingChair = state?.streamingChair ?? null;
+
+  
   const status = state?.status ?? "idle";
+  const phase = state?.phase ?? "idle";
   const roundCount = state?.roundCount ?? 1;
+  
+  const completedInCurrentRound = thread.filter(
+    (t) => t.kind === "expert" && t.roundId === roundCount,
+  ).length;
+  
+  const canResumeInterrupted = Boolean(
+    error &&
+      meetingPlan &&
+      status === "error" &&
+      phase === "discussion" &&
+      completedInCurrentRound < meetingPlan.turnSchedule.length,
+  );
+
+
+
+
+  
   const mentionCandidates = useMemo(
     () => (session ? getMentionCandidates(session) : []),
     [session],
@@ -543,14 +565,36 @@ export function BoardChatView({ sessionId }: Props) {
         onMenuClick={() => setMobileSidebarOpen(true)}
       />
 
+
+
+
+      
       {error ? (
         <div
           role="alert"
           className="mx-4 mt-2 shrink-0 rounded-lg border border-[var(--border-light)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
         >
-          {error}
+          <div className="flex items-center justify-between gap-3">
+            <span>{error}</span>
+      
+            {canResumeInterrupted ? (
+              <button
+                type="button"
+                onClick={() => void resumeInterruptedSession()}
+                className="shrink-0 rounded-md border border-[var(--border-medium)] bg-[var(--surface-raised)] px-3 py-1.5 text-xs font-medium transition hover:bg-[var(--surface-hover)]"
+              >
+                Resume discussion
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
+
+
+
+
+
+      
 
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-0 min-w-0 flex-1">
